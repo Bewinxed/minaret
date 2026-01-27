@@ -1,0 +1,97 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Azan Audio",
+        "description": "Configure the azan audio source. Provide a YouTube URL or direct link to an audio file.",
+        "data": {
+          "azan_url": "Azan Audio URL",
+          "fajr_azan_url": "Fajr Audio URL (optional)"
+        },
+        "data_description": {
+          "azan_url": "YouTube or direct URL for the main azan audio",
+          "fajr_azan_url": "Optional separate audio URL for the Fajr prayer"
+        }
+      },
+      "prayer_source": {
+        "title": "Prayer Times Source",
+        "description": "Choose where to fetch prayer times from.",
+        "data": {
+          "prayer_source": "Source"
+        }
+      },
+      "location": {
+        "title": "Location",
+        "description": "Configure location for AlAdhan prayer time calculations.",
+        "data": {
+          "city": "City",
+          "country": "Country",
+          "method": "Calculation Method"
+        }
+      },
+      "schedule": {
+        "title": "Schedule & Notifications",
+        "description": "Configure playback schedule and notification settings.",
+        "data": {
+          "external_url": "External URL",
+          "notify_service": "Notify Service Name",
+          "offset_minutes": "Offset (minutes before prayer)",
+          "prayer_fajr": "Fajr",
+          "prayer_sunrise": "Sunrise",
+          "prayer_dhuhr": "Dhuhr",
+          "prayer_asr": "Asr",
+          "prayer_maghrib": "Maghrib",
+          "prayer_isha": "Isha"
+        },
+        "data_description": {
+          "external_url": "The external URL your phone can reach HA at (e.g., https://your-ha.duckdns.org)",
+          "notify_service": "Home Assistant notify service name (e.g., mobile_app_your_phone)",
+          "offset_minutes": "Play the azan this many minutes before the actual prayer time"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Minaret is already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Azan Audio",
+        "description": "Update the azan audio source.",
+        "data": {
+          "azan_url": "Azan Audio URL",
+          "fajr_azan_url": "Fajr Audio URL (optional)"
+        }
+      },
+      "prayer_source": {
+        "title": "Prayer Times Source",
+        "data": {
+          "prayer_source": "Source"
+        }
+      },
+      "location": {
+        "title": "Location",
+        "data": {
+          "city": "City",
+          "country": "Country",
+          "method": "Calculation Method"
+        }
+      },
+      "schedule": {
+        "title": "Schedule & Notifications",
+        "data": {
+          "external_url": "External URL",
+          "notify_service": "Notify Service Name",
+          "offset_minutes": "Offset (minutes before prayer)",
+          "prayer_fajr": "Fajr",
+          "prayer_sunrise": "Sunrise",
+          "prayer_dhuhr": "Dhuhr",
+          "prayer_asr": "Asr",
+          "prayer_maghrib": "Maghrib",
+          "prayer_isha": "Isha"
+        }
+      }
+    }
+  }
+}

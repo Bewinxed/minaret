@@ -1,0 +1,26 @@
+play_azan:
+  name: Play Azan
+  description: Play the azan audio on the configured device
+  fields:
+    prayer:
+      name: Prayer
+      description: Which prayer to play the azan for
+      required: true
+      default: "Test"
+      selector:
+        select:
+          options:
+            - "Fajr"
+            - "Dhuhr"
+            - "Asr"
+            - "Maghrib"
+            - "Isha"
+            - "Test"
+
+stop_playback:
+  name: Stop Playback
+  description: Stop the currently playing azan
+
+refresh_times:
+  name: Refresh Prayer Times
+  description: Force refresh prayer times from the configured source
