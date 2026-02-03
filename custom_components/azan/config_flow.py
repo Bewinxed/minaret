@@ -85,7 +85,7 @@ class AzanConfigFlow(ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Required(
-                        CONF_PLAYBACK_MODE, default=PLAYBACK_ANDROID_VLC
+                        CONF_PLAYBACK_MODE, default=PLAYBACK_MEDIA_PLAYER
                     ): vol.In(
                         {
                             PLAYBACK_ANDROID_VLC: "Android Phone (via VLC)",
@@ -99,7 +99,7 @@ class AzanConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_media_player(
         self, user_input: dict | None = None
     ) -> ConfigFlowResult:
-        """Step 2b: Media player selection for smart speakers."""
+        """Step 3a: Media player selection for smart speakers."""
         if user_input is not None:
             self._data.update(user_input)
             return await self.async_step_prayer_source()
@@ -118,7 +118,7 @@ class AzanConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_android_vlc(
         self, user_input: dict | None = None
     ) -> ConfigFlowResult:
-        """Step 2c: Android VLC settings (notify service + external URL)."""
+        """Step 3b: Android VLC settings (notify service + external URL)."""
         if user_input is not None:
             self._data.update(user_input)
             return await self.async_step_prayer_source()
@@ -136,7 +136,7 @@ class AzanConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_prayer_source(
         self, user_input: dict | None = None
     ) -> ConfigFlowResult:
-        """Step 2: Prayer times source."""
+        """Step 4: Prayer times source."""
         if user_input is not None:
             self._data.update(user_input)
             if user_input[CONF_PRAYER_SOURCE] == SOURCE_ALADHAN:
@@ -162,7 +162,7 @@ class AzanConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_location(
         self, user_input: dict | None = None
     ) -> ConfigFlowResult:
-        """Step 2b: Location settings for AlAdhan."""
+        """Step 5: Location settings for AlAdhan."""
         if user_input is not None:
             self._data.update(user_input)
             return await self.async_step_schedule()
@@ -173,8 +173,8 @@ class AzanConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="location",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_CITY, default="Doha"): str,
-                    vol.Required(CONF_COUNTRY, default="Qatar"): str,
+                    vol.Required(CONF_CITY, default="Los Angeles"): str,
+                    vol.Required(CONF_COUNTRY, default="United States"): str,
                     vol.Required(CONF_METHOD, default=DEFAULT_METHOD): vol.In(
                         method_options
                     ),
@@ -185,7 +185,7 @@ class AzanConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_schedule(
         self, user_input: dict | None = None
     ) -> ConfigFlowResult:
-        """Step 4: Schedule settings (offset and prayer toggles)."""
+        """Step 6: Schedule settings (offset and prayer toggles)."""
         if user_input is not None:
             self._data.update(user_input)
             await self.async_set_unique_id(DOMAIN)
@@ -271,7 +271,7 @@ class AzanOptionsFlow(OptionsFlow):
                 {
                     vol.Required(
                         CONF_PLAYBACK_MODE,
-                        default=current.get(CONF_PLAYBACK_MODE, PLAYBACK_ANDROID_VLC),
+                        default=current.get(CONF_PLAYBACK_MODE, PLAYBACK_MEDIA_PLAYER),
                     ): vol.In(
                         {
                             PLAYBACK_ANDROID_VLC: "Android Phone (via VLC)",
@@ -377,10 +377,10 @@ class AzanOptionsFlow(OptionsFlow):
             data_schema=vol.Schema(
                 {
                     vol.Required(
-                        CONF_CITY, default=current.get(CONF_CITY, "Doha")
+                        CONF_CITY, default=current.get(CONF_CITY, "Los Angeles")
                     ): str,
                     vol.Required(
-                        CONF_COUNTRY, default=current.get(CONF_COUNTRY, "Qatar")
+                        CONF_COUNTRY, default=current.get(CONF_COUNTRY, "United States")
                     ): str,
                     vol.Required(
                         CONF_METHOD,
