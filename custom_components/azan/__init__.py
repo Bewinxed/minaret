@@ -420,21 +420,25 @@ async def _play_azan(hass: HomeAssistant, entry: ConfigEntry, prayer_name: str) 
 
     try:
         if playback_mode == PLAYBACK_MEDIA_PLAYER:
-            # Use media_player.play_media service
-            media_player_entity = config.get(CONF_MEDIA_PLAYER)
-            if not media_player_entity:
+            # Use media_player.play_media service on one or more entities
+            media_player_config = config.get(CONF_MEDIA_PLAYER)
+            if not media_player_config:
                 _LOGGER.warning("No media player configured")
                 return
 
-            await hass.services.async_call(
-                "media_player",
-                "play_media",
-                {
-                    "entity_id": media_player_entity,
-                    "media_content_id": media_url,
-                    "media_content_type": "music",
-                },
-            )
+            # `media_player_config` may be a single entity_id or a list
+            targets = media_player_config if isinstance(media_player_config, (list, tuple)) else [media_player_config]
+
+            for target in targets:
+                await hass.services.async_call(
+                    "media_player",
+                    "play_media",
+                    {
+                        "entity_id": target,
+                        "media_content_id": media_url,
+                        "media_content_type": "music",
+                    },
+                )
         else:
             # Android VLC mode
             notify_service = config.get(CONF_NOTIFY_SERVICE)
@@ -513,15 +517,17 @@ async def _stop_playback(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
     try:
         if playback_mode == PLAYBACK_MEDIA_PLAYER:
-            # Use media_player.media_stop service
-            media_player_entity = config.get(CONF_MEDIA_PLAYER)
-            if media_player_entity:
-                await hass.services.async_call(
-                    "media_player",
-                    "media_stop",
-                    {"entity_id": media_player_entity},
-                )
-                _LOGGER.info("Stopped azan playback on %s", media_player_entity)
+            # Use media_player.media_stop service for one or more entities
+            media_player_config = config.get(CONF_MEDIA_PLAYER)
+            if media_player_config:
+                targets = media_player_config if isinstance(media_player_config, (list, tuple)) else [media_player_config]
+                for target in targets:
+                    await hass.services.async_call(
+                        "media_player",
+                        "media_stop",
+                        {"entity_id": target},
+                    )
+                    _LOGGER.info("Stopped azan playback on %s", target)
         else:
             # Android VLC mode
             notify_service = config.get(CONF_NOTIFY_SERVICE)

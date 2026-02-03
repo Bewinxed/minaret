@@ -141,7 +141,7 @@ class AzanConfigFlow(ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_MEDIA_PLAYER): selector.EntitySelector(
-                        selector.EntitySelectorConfig(domain="media_player")
+                        selector.EntitySelectorConfig(domain="media_player", multiple=True)
                     ),
                 }
             ),
@@ -370,7 +370,7 @@ class AzanOptionsFlow(OptionsFlow):
                         CONF_MEDIA_PLAYER,
                         default=current.get(CONF_MEDIA_PLAYER, ""),
                     ): selector.EntitySelector(
-                        selector.EntitySelectorConfig(domain="media_player")
+                        selector.EntitySelectorConfig(domain="media_player", multiple=True)
                     ),
                 }
             ),

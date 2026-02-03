@@ -5,12 +5,24 @@
         "title": "Azan Audio",
         "description": "Configure the azan audio source. Provide a YouTube URL or direct link to an audio file.",
         "data": {
-          "azan_url": "Azan Audio URL",
-          "fajr_azan_url": "Fajr Audio URL (optional)"
+          "azan_url": "Custom Azan Audio URL (optional)",
+          "fajr_azan_url": "Custom Fajr Audio URL (optional)",
+          "sound_fajr": "Azan for Fajr",
+          "sound_sunrise": "Azan for Sunrise",
+          "sound_dhuhr": "Azan for Dhuhr",
+          "sound_asr": "Azan for Asr",
+          "sound_maghrib": "Azan for Maghrib",
+          "sound_isha": "Azan for Isha"
         },
         "data_description": {
           "azan_url": "YouTube or direct URL for the main azan audio",
-          "fajr_azan_url": "Optional separate audio URL for the Fajr prayer"
+          "fajr_azan_url": "Optional separate audio URL for the Fajr prayer",
+          "sound_fajr": "Choose Full, Short, or Custom audio for Fajr. If Custom, uses the Fajr audio URL.",
+          "sound_sunrise": "Choose Full, Short, or Custom audio for Sunrise. If Custom, uses the main Azan URL.",
+          "sound_dhuhr": "Choose Full, Short, or Custom audio for Dhuhr.",
+          "sound_asr": "Choose Full, Short, or Custom audio for Asr.",
+          "sound_maghrib": "Choose Full, Short, or Custom audio for Maghrib.",
+          "sound_isha": "Choose Full, Short, or Custom audio for Isha."
         }
       },
       "playback_mode": {
@@ -83,7 +95,13 @@
         "description": "Update the azan audio source.",
         "data": {
           "azan_url": "Azan Audio URL",
-          "fajr_azan_url": "Fajr Audio URL (optional)"
+          "fajr_azan_url": "Fajr Audio URL (optional)",
+          "sound_fajr": "Azan for Fajr",
+          "sound_sunrise": "Azan for Sunrise",
+          "sound_dhuhr": "Azan for Dhuhr",
+          "sound_asr": "Azan for Asr",
+          "sound_maghrib": "Azan for Maghrib",
+          "sound_isha": "Azan for Isha"
         }
       },
       "playback_mode": {
