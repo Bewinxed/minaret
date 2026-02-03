@@ -59,16 +59,16 @@
         "title": "Schedule & Prayers",
         "description": "Configure the offset and which prayers to play azan for.",
         "data": {
-          "offset_minutes": "Offset (minutes before prayer)",
           "prayer_fajr": "Fajr",
           "prayer_sunrise": "Sunrise",
+          "offset_minutes": "Sunrise Offset (in minutes)",
           "prayer_dhuhr": "Dhuhr",
           "prayer_asr": "Asr",
           "prayer_maghrib": "Maghrib",
           "prayer_isha": "Isha"
         },
         "data_description": {
-          "offset_minutes": "Play the azan this many minutes before the actual prayer time"
+          "offset_minutes": "Play the Sunrise azan this many minutes before sunrise. Range: 0–45. This offset only applies to Sunrise; other prayers play at their scheduled times."
         }
       }
     },

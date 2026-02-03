@@ -21,6 +21,12 @@ from .const import (
     CONF_AZAN_URL,
     CONF_EXTERNAL_URL,
     CONF_FAJR_URL,
+    CONF_SOUND_ASR,
+    CONF_SOUND_DHUHR,
+    CONF_SOUND_FAJR,
+    CONF_SOUND_ISHA,
+    CONF_SOUND_MAGHRIB,
+    CONF_SOUND_SUNRISE,
     CONF_MEDIA_PLAYER,
     CONF_NOTIFY_SERVICE,
     CONF_OFFSET_MINUTES,
@@ -29,6 +35,9 @@ from .const import (
     DOMAIN,
     PLAYBACK_ANDROID_VLC,
     PLAYBACK_MEDIA_PLAYER,
+    SOUND_OPTION_CUSTOM,
+    SOUND_OPTION_FULL,
+    SOUND_OPTION_SHORT,
 )
 from .coordinator import AzanCoordinator
 
@@ -61,6 +70,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "currently_playing": None,
         "is_downloading": False,
         "audio_file": None,
+        "full_audio_file": None,
+        "short_audio_file": None,
         "fajr_audio_file": None,
         "unsub_timer": None,
         "playback_reset_unsub": None,
@@ -102,6 +113,59 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 _LOGGER.info("Fajr audio ready: %s", path)
             except Exception:
                 _LOGGER.exception("Failed to download fajr audio")
+
+        # Look for user-provided default files in common locations and copy
+        # them into www/azan as internal full/short names. This allows users
+        # to drop their MP3s into `/config/media` or `/config/www` and name
+        # them as provided below.
+        try:
+            audio_dir = Path(hass.config.path("www", "azan"))
+            # Candidate filenames the user might place
+            full_names = [
+                "Azhan by Mishray Alafasi.mp3",
+                "Azhan by Mishray Alafasi - Full.mp3",
+            ]
+            short_names = [
+                "Short Azhan by Mishray Alafasi.mp3",
+                "Azhan (short) by Mishray Alafasi.mp3",
+            ]
+
+            integration_media = Path(__file__).parent / "media"
+
+            def _find_and_copy(candidates, dest_name):
+                for name in candidates:
+                    cand_paths = [
+                        # Prefer bundled integration media first
+                        integration_media / name,
+                        # Then check common config locations
+                        Path(hass.config.path(name)),
+                        Path(hass.config.path("media", name)),
+                        Path(hass.config.path("www", name)),
+                        Path(hass.config.path("www", "azan", name)),
+                        Path(name),
+                    ]
+                    for p in cand_paths:
+                        if p and p.exists() and p.is_file():
+                            dst = audio_dir / dest_name
+                            try:
+                                shutil.copyfile(str(p), str(dst))
+                                return str(dst)
+                            except Exception:
+                                _LOGGER.exception("Failed to copy default audio %s", p)
+                                return None
+                return None
+
+            full_path = _find_and_copy(full_names, "azan_full.mp3")
+            short_path = _find_and_copy(short_names, "azan_short.mp3")
+
+            if full_path:
+                store["full_audio_file"] = full_path
+                _LOGGER.info("Found default full azan: %s", full_path)
+            if short_path:
+                store["short_audio_file"] = short_path
+                _LOGGER.info("Found default short azan: %s", short_path)
+        except Exception:
+            _LOGGER.exception("Failed to copy default azan files")
 
         store["is_downloading"] = False
         if coordinator.data:
@@ -228,7 +292,16 @@ def _download_audio(hass: HomeAssistant, url: str, name: str) -> str:
         "quiet": True,
         "no_warnings": True,
         "http_headers": {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+            "User-Agent": (
+                "Mozilla/5.0 (Linux; Android 13) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/121.0.0.0 Mobile Safari/537.36"
+            )        
+        },
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["android"]
+            }
         },
     }
 
@@ -276,9 +349,40 @@ async def _play_azan(hass: HomeAssistant, entry: ConfigEntry, prayer_name: str) 
     playback_mode = config.get(CONF_PLAYBACK_MODE, PLAYBACK_MEDIA_PLAYER)
 
     # Pick the right audio file
-    audio_file = store.get("audio_file")
-    if prayer_name == "Fajr" and store.get("fajr_audio_file"):
-        audio_file = store["fajr_audio_file"]
+    # Determine per-prayer sound selection
+    selection_key_map = {
+        "Fajr": CONF_SOUND_FAJR,
+        "Sunrise": CONF_SOUND_SUNRISE,
+        "Dhuhr": CONF_SOUND_DHUHR,
+        "Asr": CONF_SOUND_ASR,
+        "Maghrib": CONF_SOUND_MAGHRIB,
+        "Isha": CONF_SOUND_ISHA,
+    }
+
+    # When invoked as a Test, prefer the short azan
+    if prayer_name == "Test":
+        selection = SOUND_OPTION_SHORT
+    else:
+        sel_key = selection_key_map.get(prayer_name)
+        selection = config.get(sel_key, SOUND_OPTION_FULL) if sel_key else SOUND_OPTION_FULL
+
+    audio_file = None
+    if selection == SOUND_OPTION_CUSTOM:
+        if prayer_name == "Fajr":
+            audio_file = store.get("fajr_audio_file")
+        else:
+            audio_file = store.get("audio_file")
+    elif selection == SOUND_OPTION_FULL:
+        audio_file = store.get("full_audio_file")
+    elif selection == SOUND_OPTION_SHORT:
+        audio_file = store.get("short_audio_file")
+
+    # Fallbacks if chosen file not available
+    if not audio_file or not os.path.exists(audio_file):
+        if prayer_name == "Fajr" and store.get("fajr_audio_file"):
+            audio_file = store.get("fajr_audio_file")
+        else:
+            audio_file = store.get("audio_file")
 
     if not audio_file or not os.path.exists(audio_file):
         _LOGGER.warning("No audio file available for %s", prayer_name)
@@ -466,7 +570,6 @@ def _schedule_next_prayer(hass: HomeAssistant, entry: ConfigEntry) -> None:
         return
 
     config = {**entry.data, **entry.options}
-    offset_minutes = config.get(CONF_OFFSET_MINUTES, DEFAULT_OFFSET_MINUTES)
     now = dt_util.now()
 
     # Find next enabled, unplayed prayer
@@ -480,7 +583,12 @@ def _schedule_next_prayer(hass: HomeAssistant, entry: ConfigEntry) -> None:
         prayer_time = prayer["time"]
         if prayer_time.tzinfo is None:
             prayer_time = prayer_time.replace(tzinfo=now.tzinfo)
-        target_time = prayer_time - timedelta(minutes=offset_minutes)
+        # Offset only applies to Sunrise; other prayers use zero offset
+        if prayer["name"] == "Sunrise":
+            this_offset = config.get(CONF_OFFSET_MINUTES, DEFAULT_OFFSET_MINUTES)
+        else:
+            this_offset = 0
+        target_time = prayer_time - timedelta(minutes=this_offset)
         if target_time > now:
             next_prayer = prayer
             break
@@ -506,6 +614,12 @@ def _schedule_next_prayer(hass: HomeAssistant, entry: ConfigEntry) -> None:
     prayer_time = next_prayer["time"]
     if prayer_time.tzinfo is None:
         prayer_time = prayer_time.replace(tzinfo=now.tzinfo)
+    # Determine offset for the selected prayer (Sunrise only)
+    if next_prayer["name"] == "Sunrise":
+        offset_minutes = config.get(CONF_OFFSET_MINUTES, DEFAULT_OFFSET_MINUTES)
+    else:
+        offset_minutes = 0
+
     target_time = prayer_time - timedelta(minutes=offset_minutes)
     _LOGGER.info(
         "Scheduled %s azan at %s (offset: -%dm)",

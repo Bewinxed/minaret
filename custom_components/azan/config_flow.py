@@ -21,6 +21,12 @@ from .const import (
     CONF_NOTIFY_SERVICE,
     CONF_OFFSET_MINUTES,
     CONF_PLAYBACK_MODE,
+    CONF_SOUND_ASR,
+    CONF_SOUND_DHUHR,
+    CONF_SOUND_FAJR,
+    CONF_SOUND_ISHA,
+    CONF_SOUND_MAGHRIB,
+    CONF_SOUND_SUNRISE,
     CONF_PRAYER_ASR,
     CONF_PRAYER_DHUHR,
     CONF_PRAYER_FAJR,
@@ -36,6 +42,9 @@ from .const import (
     PLAYBACK_MEDIA_PLAYER,
     SOURCE_ALADHAN,
     SOURCE_QATAR_MOI,
+    SOUND_OPTION_CUSTOM,
+    SOUND_OPTION_FULL,
+    SOUND_OPTION_SHORT,
 )
 
 
@@ -55,18 +64,41 @@ class AzanConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             self._data.update(user_input)
             return await self.async_step_playback_mode()
-
+        # Allow selecting one of two built-in defaults or provide custom URLs/paths.
+        # Also allow per-prayer selection of which sound to use (full/short/custom).
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_AZAN_URL): str,
+                    vol.Required(CONF_SOUND_FAJR, default=SOUND_OPTION_FULL): vol.In(
+                        {SOUND_OPTION_FULL: "Full", SOUND_OPTION_SHORT: "Short", SOUND_OPTION_CUSTOM: "Custom (use Fajr URL)"}
+                    ),
+                    vol.Required(CONF_SOUND_SUNRISE, default=SOUND_OPTION_FULL): vol.In(
+                        {SOUND_OPTION_FULL: "Full", SOUND_OPTION_SHORT: "Short", SOUND_OPTION_CUSTOM: "Custom (use Azan URL)"}
+                    ),
+                    vol.Required(CONF_SOUND_DHUHR, default=SOUND_OPTION_FULL): vol.In(
+                        {SOUND_OPTION_FULL: "Full", SOUND_OPTION_SHORT: "Short", SOUND_OPTION_CUSTOM: "Custom (use Azan URL)"}
+                    ),
+                    vol.Required(CONF_SOUND_ASR, default=SOUND_OPTION_FULL): vol.In(
+                        {SOUND_OPTION_FULL: "Full", SOUND_OPTION_SHORT: "Short", SOUND_OPTION_CUSTOM: "Custom (use Azan URL)"}
+                    ),
+                    vol.Required(CONF_SOUND_MAGHRIB, default=SOUND_OPTION_FULL): vol.In(
+                        {SOUND_OPTION_FULL: "Full", SOUND_OPTION_SHORT: "Short", SOUND_OPTION_CUSTOM: "Custom (use Azan URL)"}
+                    ),
+                    vol.Required(CONF_SOUND_ISHA, default=SOUND_OPTION_FULL): vol.In(
+                        {SOUND_OPTION_FULL: "Full", SOUND_OPTION_SHORT: "Short", SOUND_OPTION_CUSTOM: "Custom (use Azan URL)"}
+                    ),
+                    vol.Optional(CONF_AZAN_URL, default=""): str,
                     vol.Optional(CONF_FAJR_URL, default=""): str,
                 }
             ),
             description_placeholders={
-                "azan_url_desc": "YouTube or direct URL for the azan audio",
-                "fajr_url_desc": "Optional separate audio for Fajr prayer",
+                "azan_url_desc": (
+                    "Choose the default built-in azan or provide a custom URL/local MP3 path (e.g. media/adhan.mp3)."
+                ),
+                "fajr_url_desc": (
+                    "Optional separate audio for Fajr (URL or local path, e.g. media/fajr_adhan.mp3)."
+                ),
             },
         )
 
@@ -201,7 +233,7 @@ class AzanConfigFlow(ConfigFlow, domain=DOMAIN):
                 {
                     vol.Required(
                         CONF_OFFSET_MINUTES, default=DEFAULT_OFFSET_MINUTES
-                    ): vol.All(int, vol.Range(min=0, max=30)),
+                    ): vol.All(int, vol.Range(min=0, max=45)),
                     vol.Required(CONF_PRAYER_FAJR, default=True): bool,
                     vol.Required(CONF_PRAYER_SUNRISE, default=False): bool,
                     vol.Required(CONF_PRAYER_DHUHR, default=True): bool,
@@ -242,6 +274,36 @@ class AzanOptionsFlow(OptionsFlow):
             data_schema=vol.Schema(
                 {
                     vol.Required(
+                        CONF_SOUND_FAJR, default=current.get(CONF_SOUND_FAJR, SOUND_OPTION_FULL)
+                    ): vol.In(
+                        {SOUND_OPTION_FULL: "Full", SOUND_OPTION_SHORT: "Short", SOUND_OPTION_CUSTOM: "Custom (Use Fajr URL)"}
+                    ),
+                    vol.Required(
+                        CONF_SOUND_SUNRISE, default=current.get(CONF_SOUND_SUNRISE, SOUND_OPTION_FULL)
+                    ): vol.In(
+                        {SOUND_OPTION_FULL: "Full", SOUND_OPTION_SHORT: "Short", SOUND_OPTION_CUSTOM: "Custom (use Azan URL)"}
+                    ),
+                    vol.Required(
+                        CONF_SOUND_DHUHR, default=current.get(CONF_SOUND_DHUHR, SOUND_OPTION_FULL)
+                    ): vol.In(
+                        {SOUND_OPTION_FULL: "Full", SOUND_OPTION_SHORT: "Short", SOUND_OPTION_CUSTOM: "Custom (use Azan URL)"}
+                    ),
+                    vol.Required(
+                        CONF_SOUND_ASR, default=current.get(CONF_SOUND_ASR, SOUND_OPTION_FULL)
+                    ): vol.In(
+                        {SOUND_OPTION_FULL: "Full", SOUND_OPTION_SHORT: "Short", SOUND_OPTION_CUSTOM: "Custom (use Azan URL)"}
+                    ),
+                    vol.Required(
+                        CONF_SOUND_MAGHRIB, default=current.get(CONF_SOUND_MAGHRIB, SOUND_OPTION_FULL)
+                    ): vol.In(
+                        {SOUND_OPTION_FULL: "Full", SOUND_OPTION_SHORT: "Short", SOUND_OPTION_CUSTOM: "Custom (use Azan URL)"}
+                    ),
+                    vol.Required(
+                        CONF_SOUND_ISHA, default=current.get(CONF_SOUND_ISHA, SOUND_OPTION_FULL)
+                    ): vol.In(
+                        {SOUND_OPTION_FULL: "Full", SOUND_OPTION_SHORT: "Short", SOUND_OPTION_CUSTOM: "Custom (use Azan URL)"}
+                    ),
+                    vol.Optional(
                         CONF_AZAN_URL,
                         default=current.get(CONF_AZAN_URL, ""),
                     ): str,
@@ -251,6 +313,14 @@ class AzanOptionsFlow(OptionsFlow):
                     ): str,
                 }
             ),
+            description_placeholders={
+                "azan_url_desc": (
+                    "Choose the default built-in azan or provide a custom URL/local MP3 path (e.g. media/adhan.mp3)."
+                ),
+                "fajr_url_desc": (
+                    "Optional separate audio for Fajr (URL or local path, e.g. media/fajr_adhan.mp3)."
+                ),
+            },
         )
 
     async def async_step_playback_mode(
@@ -405,12 +475,6 @@ class AzanOptionsFlow(OptionsFlow):
             data_schema=vol.Schema(
                 {
                     vol.Required(
-                        CONF_OFFSET_MINUTES,
-                        default=current.get(
-                            CONF_OFFSET_MINUTES, DEFAULT_OFFSET_MINUTES
-                        ),
-                    ): vol.All(int, vol.Range(min=0, max=30)),
-                    vol.Required(
                         CONF_PRAYER_FAJR,
                         default=current.get(CONF_PRAYER_FAJR, True),
                     ): bool,
@@ -418,6 +482,12 @@ class AzanOptionsFlow(OptionsFlow):
                         CONF_PRAYER_SUNRISE,
                         default=current.get(CONF_PRAYER_SUNRISE, False),
                     ): bool,
+                    vol.Required(
+                        CONF_OFFSET_MINUTES,
+                        default=current.get(
+                            CONF_OFFSET_MINUTES, DEFAULT_OFFSET_MINUTES
+                        ),
+                    ): vol.All(int, vol.Range(min=0, max=45)),
                     vol.Required(
                         CONF_PRAYER_DHUHR,
                         default=current.get(CONF_PRAYER_DHUHR, True),

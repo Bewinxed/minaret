@@ -15,6 +15,20 @@ CONF_EXTERNAL_URL = "external_url"
 CONF_PLAYBACK_MODE = "playback_mode"
 CONF_MEDIA_PLAYER = "media_player"
 
+# Default sound selection keys
+# Per-prayer sound selection keys
+CONF_SOUND_FAJR = "sound_fajr"
+CONF_SOUND_SUNRISE = "sound_sunrise"
+CONF_SOUND_DHUHR = "sound_dhuhr"
+CONF_SOUND_ASR = "sound_asr"
+CONF_SOUND_MAGHRIB = "sound_maghrib"
+CONF_SOUND_ISHA = "sound_isha"
+
+# Sound options
+SOUND_OPTION_FULL = "full"
+SOUND_OPTION_SHORT = "short"
+SOUND_OPTION_CUSTOM = "custom"
+
 # Playback modes
 PLAYBACK_ANDROID_VLC = "android_vlc"
 PLAYBACK_MEDIA_PLAYER = "media_player"
@@ -85,5 +99,5 @@ CALC_METHODS = {
 
 # Defaults
 DEFAULT_OFFSET_MINUTES = 0
-DEFAULT_METHOD = 10  # Qatar
-DEFAULT_SOURCE = SOURCE_QATAR_MOI
+DEFAULT_METHOD = 2  # Islamic Society of North America
+DEFAULT_SOURCE = SOURCE_ALADHAN
