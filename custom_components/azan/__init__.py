@@ -338,12 +338,12 @@ async def _play_azan(hass: HomeAssistant, entry: ConfigEntry, prayer_name: str) 
     coordinator: AzanCoordinator = store["coordinator"]
 
     # Guard: check if already played (prevents double-triggers from race conditions)
+    # We add the prayer to `played_today` only after playback successfully starts
+    # so that missing audio doesn't permanently mark a prayer as played.
     if prayer_name != "Test" and coordinator.data:
         if prayer_name in coordinator.data.played_today:
             _LOGGER.debug("Prayer %s already played, skipping duplicate", prayer_name)
             return
-        # Mark as played IMMEDIATELY to prevent race conditions
-        coordinator.data.played_today.add(prayer_name)
 
     config = {**entry.data, **entry.options}
     playback_mode = config.get(CONF_PLAYBACK_MODE, PLAYBACK_MEDIA_PLAYER)
@@ -386,6 +386,8 @@ async def _play_azan(hass: HomeAssistant, entry: ConfigEntry, prayer_name: str) 
 
     if not audio_file or not os.path.exists(audio_file):
         _LOGGER.warning("No audio file available for %s", prayer_name)
+        # Ensure we still schedule the next prayer even if playback failed
+        _schedule_next_prayer(hass, entry)
         return
 
     filename = os.path.basename(audio_file)
@@ -476,9 +478,16 @@ async def _play_azan(hass: HomeAssistant, entry: ConfigEntry, prayer_name: str) 
         _LOGGER.exception("Failed to play azan")
         store["is_playing"] = False
         store["currently_playing"] = None
+        # Mark that prayer was not successfully played and reschedule next
         if coordinator.data:
             coordinator.async_set_updated_data(coordinator.data)
+        _schedule_next_prayer(hass, entry)
         return
+
+    # Mark prayer as played (avoid marking Test)
+    if prayer_name != "Test" and coordinator.data:
+        coordinator.data.played_today.add(prayer_name)
+        coordinator.async_set_updated_data(coordinator.data)
 
     # Reset playing state after 5 minutes
     @callback
@@ -580,11 +589,14 @@ def _schedule_next_prayer(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
     # Find next enabled, unplayed prayer
     next_prayer = None
+    _LOGGER.debug("Played today set: %s", getattr(coordinator.data, "played_today", set()))
     for prayer in coordinator.data.prayers:
         if not prayer["enabled"]:
             continue
         if prayer["name"] in coordinator.data.played_today:
+            _LOGGER.debug("Skipping %s because it's in played_today", prayer["name"])
             continue
+        _LOGGER.debug("Considering prayer %s at %s", prayer["name"], prayer["time"])
         # Make prayer time timezone-aware for comparison
         prayer_time = prayer["time"]
         if prayer_time.tzinfo is None:
@@ -601,6 +613,7 @@ def _schedule_next_prayer(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
     if next_prayer is None:
         # No more prayers today, schedule a refresh at midnight
+        _LOGGER.debug("No next prayer found; played_today=%s", coordinator.data.played_today)
         tomorrow = (now + timedelta(days=1)).replace(
             hour=0, minute=1, second=0, microsecond=0
         )
