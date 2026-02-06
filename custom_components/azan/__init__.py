@@ -129,6 +129,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 "Short Azhan by Mishray Alafasi.mp3",
                 "Azhan (short) by Mishray Alafasi.mp3",
             ]
+            fajr_names = [
+                "Fajr Azhan by Mishray Alafasy.mp3",
+                "Fajr Azhan by Mishray Alafasi.mp3",
+            ]
 
             integration_media = Path(__file__).parent / "media"
 
@@ -157,6 +161,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
             full_path = _find_and_copy(full_names, "azan_full.mp3")
             short_path = _find_and_copy(short_names, "azan_short.mp3")
+            fajr_path = _find_and_copy(fajr_names, "fajr_azan.mp3")
 
             if full_path:
                 store["full_audio_file"] = full_path
@@ -164,6 +169,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             if short_path:
                 store["short_audio_file"] = short_path
                 _LOGGER.info("Found default short azan: %s", short_path)
+            if fajr_path:
+                store["fajr_audio_file"] = fajr_path
+                _LOGGER.info("Found default fajr azan: %s", fajr_path)
         except Exception:
             _LOGGER.exception("Failed to copy default azan files")
 
@@ -373,7 +381,11 @@ async def _play_azan(hass: HomeAssistant, entry: ConfigEntry, prayer_name: str) 
         else:
             audio_file = store.get("audio_file")
     elif selection == SOUND_OPTION_FULL:
-        audio_file = store.get("full_audio_file")
+        # For Fajr, prefer the special fajr audio when full is selected.
+        if prayer_name == "Fajr":
+            audio_file = store.get("fajr_audio_file") or store.get("full_audio_file")
+        else:
+            audio_file = store.get("full_audio_file")
     elif selection == SOUND_OPTION_SHORT:
         audio_file = store.get("short_audio_file")
 
