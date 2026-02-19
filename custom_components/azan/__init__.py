@@ -26,6 +26,7 @@ from .const import (
     CONF_OFFSET_MINUTES,
     CONF_OUTPUT_DEVICE,
     CONF_PLAYBACK_MODE,
+    CONF_SUHOOR_URL,
     DEFAULT_OFFSET_MINUTES,
     DOMAIN,
 )
@@ -39,7 +40,7 @@ PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BUTTON]
 SERVICE_PLAY_SCHEMA = vol.Schema(
     {
         vol.Required("prayer", default="Test"): vol.In(
-            ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha", "Test"]
+            ["Suhoor", "Fajr", "Dhuhr", "Asr", "Maghrib", "Isha", "Test"]
         ),
     }
 )
@@ -97,6 +98,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "is_downloading": False,
         "audio_file": None,
         "fajr_audio_file": None,
+        "suhoor_audio_file": None,
         "unsub_timer": None,
         "playback_reset_unsub": None,
     }
@@ -149,6 +151,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 if cached.exists():
                     store["fajr_audio_file"] = str(cached)
                     _LOGGER.info("Using cached fajr audio: %s", cached)
+
+        suhoor_url = config.get(CONF_SUHOOR_URL)
+        if suhoor_url:
+            try:
+                path = await hass.async_add_executor_job(
+                    _download_audio, hass, suhoor_url, "suhoor"
+                )
+                store["suhoor_audio_file"] = path
+                _LOGGER.info("Suhoor audio ready: %s", path)
+            except Exception:
+                _LOGGER.exception("Failed to download suhoor audio")
+                cached = audio_dir / "suhoor.mp3"
+                if cached.exists():
+                    store["suhoor_audio_file"] = str(cached)
+                    _LOGGER.info("Using cached suhoor audio: %s", cached)
 
         store["is_downloading"] = False
         if coordinator.data:
@@ -289,6 +306,8 @@ async def _play_azan(hass: HomeAssistant, entry: ConfigEntry, prayer_name: str) 
     audio_file = store.get("audio_file")
     if prayer_name == "Fajr" and store.get("fajr_audio_file"):
         audio_file = store["fajr_audio_file"]
+    elif prayer_name == "Suhoor" and store.get("suhoor_audio_file"):
+        audio_file = store["suhoor_audio_file"]
 
     if not audio_file or not os.path.exists(audio_file):
         _LOGGER.warning("No audio file available for %s", prayer_name)

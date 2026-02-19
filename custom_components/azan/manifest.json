@@ -8,5 +8,5 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/bewinxed/minaret/issues",
   "requirements": ["yt-dlp>=2024.0.0", "hijri-converter>=2.3.0"],
-  "version": "1.1.0"
+  "version": "1.2.0"
 }

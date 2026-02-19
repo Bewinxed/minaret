@@ -61,6 +61,21 @@
         "data_description": {
           "offset_minutes": "Play the azan this many minutes before the actual prayer time"
         }
+      },
+      "suhoor": {
+        "title": "Suhoor Alarm",
+        "description": "Configure the pre-dawn meal alarm that plays before Fajr.",
+        "data": {
+          "suhoor_enabled": "Enable Suhoor Alarm",
+          "suhoor_offset_minutes": "Minutes Before Fajr",
+          "suhoor_ramadan_only": "Ramadan Only",
+          "suhoor_url": "Suhoor Audio URL (optional)"
+        },
+        "data_description": {
+          "suhoor_offset_minutes": "How many minutes before Fajr to play the Suhoor alarm (default: 60)",
+          "suhoor_ramadan_only": "Only play during Ramadan (auto-detected via Hijri calendar)",
+          "suhoor_url": "Optional separate audio for Suhoor. Leave empty to use the main azan audio."
+        }
       }
     },
     "abort": {
@@ -124,6 +139,21 @@
         },
         "data_description": {
           "offset_minutes": "Play the azan this many minutes before the actual prayer time"
+        }
+      },
+      "suhoor": {
+        "title": "Suhoor Alarm",
+        "description": "Configure the pre-dawn meal alarm that plays before Fajr.",
+        "data": {
+          "suhoor_enabled": "Enable Suhoor Alarm",
+          "suhoor_offset_minutes": "Minutes Before Fajr",
+          "suhoor_ramadan_only": "Ramadan Only",
+          "suhoor_url": "Suhoor Audio URL (optional)"
+        },
+        "data_description": {
+          "suhoor_offset_minutes": "How many minutes before Fajr to play the Suhoor alarm (default: 60)",
+          "suhoor_ramadan_only": "Only play during Ramadan (auto-detected via Hijri calendar)",
+          "suhoor_url": "Optional separate audio for Suhoor. Leave empty to use the main azan audio."
         }
       }
     }

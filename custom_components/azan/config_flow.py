@@ -24,8 +24,13 @@ from .const import (
     CONF_PRAYER_MAGHRIB,
     CONF_PRAYER_SOURCE,
     CONF_PRAYER_SUNRISE,
+    CONF_SUHOOR_ENABLED,
+    CONF_SUHOOR_OFFSET,
+    CONF_SUHOOR_RAMADAN_ONLY,
+    CONF_SUHOOR_URL,
     DEFAULT_METHOD,
     DEFAULT_OFFSET_MINUTES,
+    DEFAULT_SUHOOR_OFFSET,
     DEFAULT_SOURCE,
     DOMAIN,
     SOURCE_ALADHAN,
@@ -200,12 +205,7 @@ class AzanConfigFlow(ConfigFlow, domain=DOMAIN):
         """Step 4: Schedule and prayer toggles."""
         if user_input is not None:
             self._data.update(user_input)
-            await self.async_set_unique_id(DOMAIN)
-            self._abort_if_unique_id_configured()
-            return self.async_create_entry(
-                title="Minaret",
-                data=self._data,
-            )
+            return await self.async_step_suhoor()
 
         return self.async_show_form(
             step_id="schedule",
@@ -220,6 +220,33 @@ class AzanConfigFlow(ConfigFlow, domain=DOMAIN):
                     vol.Required(CONF_PRAYER_ASR, default=True): bool,
                     vol.Required(CONF_PRAYER_MAGHRIB, default=True): bool,
                     vol.Required(CONF_PRAYER_ISHA, default=True): bool,
+                }
+            ),
+        )
+
+    async def async_step_suhoor(
+        self, user_input: dict | None = None
+    ) -> ConfigFlowResult:
+        """Step 5: Suhoor alarm settings."""
+        if user_input is not None:
+            self._data.update(user_input)
+            await self.async_set_unique_id(DOMAIN)
+            self._abort_if_unique_id_configured()
+            return self.async_create_entry(
+                title="Minaret",
+                data=self._data,
+            )
+
+        return self.async_show_form(
+            step_id="suhoor",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_SUHOOR_ENABLED, default=False): bool,
+                    vol.Required(
+                        CONF_SUHOOR_OFFSET, default=DEFAULT_SUHOOR_OFFSET
+                    ): vol.All(int, vol.Range(min=15, max=120)),
+                    vol.Required(CONF_SUHOOR_RAMADAN_ONLY, default=True): bool,
+                    vol.Optional(CONF_SUHOOR_URL, default=""): str,
                 }
             ),
         )
@@ -403,7 +430,7 @@ class AzanOptionsFlow(OptionsFlow):
         """Options step 4: Schedule settings."""
         if user_input is not None:
             self._data.update(user_input)
-            return self.async_create_entry(title="", data=self._data)
+            return await self.async_step_suhoor()
 
         current = {**self._config_entry.data, **self._config_entry.options}
 
@@ -441,6 +468,40 @@ class AzanOptionsFlow(OptionsFlow):
                         CONF_PRAYER_ISHA,
                         default=current.get(CONF_PRAYER_ISHA, True),
                     ): bool,
+                }
+            ),
+        )
+
+    async def async_step_suhoor(
+        self, user_input: dict | None = None
+    ) -> ConfigFlowResult:
+        """Options step 5: Suhoor alarm settings."""
+        if user_input is not None:
+            self._data.update(user_input)
+            return self.async_create_entry(title="", data=self._data)
+
+        current = {**self._config_entry.data, **self._config_entry.options}
+
+        return self.async_show_form(
+            step_id="suhoor",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_SUHOOR_ENABLED,
+                        default=current.get(CONF_SUHOOR_ENABLED, False),
+                    ): bool,
+                    vol.Required(
+                        CONF_SUHOOR_OFFSET,
+                        default=current.get(CONF_SUHOOR_OFFSET, DEFAULT_SUHOOR_OFFSET),
+                    ): vol.All(int, vol.Range(min=15, max=120)),
+                    vol.Required(
+                        CONF_SUHOOR_RAMADAN_ONLY,
+                        default=current.get(CONF_SUHOOR_RAMADAN_ONLY, True),
+                    ): bool,
+                    vol.Optional(
+                        CONF_SUHOOR_URL,
+                        default=current.get(CONF_SUHOOR_URL, ""),
+                    ): str,
                 }
             ),
         )

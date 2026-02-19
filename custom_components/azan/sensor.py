@@ -13,7 +13,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, PRAYER_ICONS, PRAYER_ORDER
+from .const import CONF_SUHOOR_ENABLED, DOMAIN, PRAYER_ICONS, PRAYER_ORDER
 from .coordinator import AzanCoordinator
 
 
@@ -26,11 +26,16 @@ async def async_setup_entry(
     store = hass.data[DOMAIN][entry.entry_id]
     coordinator: AzanCoordinator = store["coordinator"]
 
+    config = {**entry.data, **entry.options}
     entities: list[SensorEntity] = []
 
     # Individual prayer time sensors
     for prayer_name in PRAYER_ORDER:
         entities.append(PrayerTimeSensor(coordinator, entry, prayer_name))
+
+    # Suhoor time sensor (only when enabled)
+    if config.get(CONF_SUHOOR_ENABLED, False):
+        entities.append(SuhoorTimeSensor(coordinator, entry))
 
     # Next prayer sensor
     entities.append(NextPrayerSensor(coordinator, entry))
@@ -40,6 +45,9 @@ async def async_setup_entry(
 
     # Hijri date sensor
     entities.append(HijriDateSensor(coordinator, entry))
+
+    # Ramadan sensor
+    entities.append(RamadanSensor(coordinator, entry))
 
     # Status sensor
     entities.append(AzanStatusSensor(coordinator, entry))
@@ -355,6 +363,101 @@ class HijriDateSensor(AzanBaseSensor):
             }
         except Exception:
             return {}
+
+
+class SuhoorTimeSensor(AzanBaseSensor):
+    """Sensor for the Suhoor alarm time."""
+
+    def __init__(
+        self,
+        coordinator: AzanCoordinator,
+        entry: ConfigEntry,
+    ) -> None:
+        """Initialize the Suhoor time sensor."""
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{entry.entry_id}_suhoor"
+        self._attr_icon = PRAYER_ICONS.get("Suhoor", "mdi:silverware-fork-knife")
+
+    @property
+    def name(self) -> str:
+        """Return the name."""
+        return "Suhoor"
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the Suhoor time as HH:MM string."""
+        prayer = self._get_suhoor()
+        if prayer:
+            return prayer["time_str"]
+        return None
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return extra attributes."""
+        prayer = self._get_suhoor()
+        if not prayer:
+            return {}
+
+        played = False
+        if self.coordinator.data:
+            played = "Suhoor" in self.coordinator.data.played_today
+
+        return {
+            "enabled": prayer["enabled"],
+            "played": played,
+            "datetime": prayer["time"].isoformat(),
+        }
+
+    def _get_suhoor(self) -> dict | None:
+        """Get the Suhoor entry from prayers list."""
+        if not self.coordinator.data:
+            return None
+        for prayer in self.coordinator.data.prayers:
+            if prayer["name"] == "Suhoor":
+                return prayer
+        return None
+
+
+class RamadanSensor(AzanBaseSensor):
+    """Sensor showing Ramadan status and Hijri date info."""
+
+    def __init__(
+        self,
+        coordinator: AzanCoordinator,
+        entry: ConfigEntry,
+    ) -> None:
+        """Initialize the Ramadan sensor."""
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{entry.entry_id}_ramadan"
+        self._attr_icon = "mdi:moon-waning-crescent"
+
+    @property
+    def name(self) -> str:
+        """Return the name."""
+        return "Ramadan"
+
+    @property
+    def native_value(self) -> str:
+        """Return Yes/No for Ramadan status."""
+        if not self.coordinator.data:
+            return "Unknown"
+        return "Yes" if self.coordinator.data.is_ramadan else "No"
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return Hijri calendar attributes."""
+        if not self.coordinator.data:
+            return {}
+        data = self.coordinator.data
+        attrs: dict = {}
+        if data.hijri_month is not None:
+            attrs["hijri_month"] = data.hijri_month
+        if data.hijri_day is not None:
+            attrs["hijri_day"] = data.hijri_day
+        if data.hijri_month_name is not None:
+            attrs["hijri_month_name"] = data.hijri_month_name
+        attrs["is_ramadan"] = data.is_ramadan
+        return attrs
 
 
 class AzanStatusSensor(AzanBaseSensor):

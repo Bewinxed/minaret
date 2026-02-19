@@ -13,6 +13,12 @@ CONF_COUNTRY = "country"
 CONF_METHOD = "method"
 CONF_OFFSET_MINUTES = "offset_minutes"
 
+# Suhoor config keys
+CONF_SUHOOR_ENABLED = "suhoor_enabled"
+CONF_SUHOOR_OFFSET = "suhoor_offset_minutes"
+CONF_SUHOOR_URL = "suhoor_url"
+CONF_SUHOOR_RAMADAN_ONLY = "suhoor_ramadan_only"
+
 # Legacy config keys (for migration)
 CONF_PLAYBACK_MODE = "playback_mode"
 CONF_MEDIA_PLAYER = "media_player"
@@ -49,6 +55,7 @@ PRAYER_ICONS = {
     "Asr": "mdi:weather-partly-cloudy",
     "Maghrib": "mdi:weather-sunset-down",
     "Isha": "mdi:weather-night",
+    "Suhoor": "mdi:silverware-fork-knife",
 }
 
 # Qatar MOI name normalization
@@ -86,3 +93,4 @@ CALC_METHODS = {
 DEFAULT_OFFSET_MINUTES = 0
 DEFAULT_METHOD = 10  # Qatar
 DEFAULT_SOURCE = SOURCE_QATAR_MOI
+DEFAULT_SUHOOR_OFFSET = 60
