@@ -13,30 +13,21 @@
           "fajr_azan_url": "Optional separate audio URL for the Fajr prayer"
         }
       },
-      "playback_mode": {
-        "title": "Playback Device",
-        "description": "Choose how you want to play the azan audio.",
+      "output_device": {
+        "title": "Output Device",
+        "description": "Select the device to play the azan on. Smart speakers and Android phones with the HA Companion App are listed automatically.",
         "data": {
-          "playback_mode": "Playback Mode"
+          "output_device": "Output Device"
         }
       },
-      "media_player": {
-        "title": "Media Player",
-        "description": "Select the smart speaker or media player to use for azan playback.",
-        "data": {
-          "media_player": "Media Player"
-        }
-      },
-      "android_vlc": {
+      "android_settings": {
         "title": "Android Settings",
-        "description": "Configure the Android phone settings for VLC playback.",
+        "description": "Configure the external URL for Android playback. This is how your phone reaches Home Assistant to stream the audio.",
         "data": {
-          "external_url": "External URL",
-          "notify_service": "Notify Service Name"
+          "external_url": "External URL"
         },
         "data_description": {
-          "external_url": "The external URL your phone can reach Home Assistant at (e.g., your-ha.duckdns.org)",
-          "notify_service": "Home Assistant notify service name (e.g., mobile_app_your_phone)"
+          "external_url": "The external URL your phone can reach Home Assistant at (e.g., https://your-ha.duckdns.org)"
         }
       },
       "prayer_source": {
@@ -86,36 +77,33 @@
           "fajr_azan_url": "Fajr Audio URL (optional)"
         }
       },
-      "playback_mode": {
-        "title": "Playback Device",
-        "description": "Choose how you want to play the azan audio.",
+      "output_device": {
+        "title": "Output Device",
+        "description": "Select the device to play the azan on.",
         "data": {
-          "playback_mode": "Playback Mode"
+          "output_device": "Output Device"
         }
       },
-      "media_player": {
-        "title": "Media Player",
-        "description": "Select the smart speaker or media player to use for azan playback.",
-        "data": {
-          "media_player": "Media Player"
-        }
-      },
-      "android_vlc": {
+      "android_settings": {
         "title": "Android Settings",
-        "description": "Configure the Android phone settings for VLC playback.",
+        "description": "Configure the external URL for Android playback.",
         "data": {
-          "external_url": "External URL",
-          "notify_service": "Notify Service Name"
+          "external_url": "External URL"
+        },
+        "data_description": {
+          "external_url": "The external URL your phone can reach Home Assistant at (e.g., https://your-ha.duckdns.org)"
         }
       },
       "prayer_source": {
         "title": "Prayer Times Source",
+        "description": "Choose where to fetch prayer times from.",
         "data": {
           "prayer_source": "Source"
         }
       },
       "location": {
         "title": "Location",
+        "description": "Configure location for AlAdhan prayer time calculations.",
         "data": {
           "city": "City",
           "country": "Country",
@@ -124,6 +112,7 @@
       },
       "schedule": {
         "title": "Schedule & Prayers",
+        "description": "Configure the offset and which prayers to play azan for.",
         "data": {
           "offset_minutes": "Offset (minutes before prayer)",
           "prayer_fajr": "Fajr",
@@ -132,6 +121,9 @@
           "prayer_asr": "Asr",
           "prayer_maghrib": "Maghrib",
           "prayer_isha": "Isha"
+        },
+        "data_description": {
+          "offset_minutes": "Play the azan this many minutes before the actual prayer time"
         }
       }
     }

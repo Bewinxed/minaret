@@ -24,11 +24,10 @@ from .const import (
     CONF_MEDIA_PLAYER,
     CONF_NOTIFY_SERVICE,
     CONF_OFFSET_MINUTES,
+    CONF_OUTPUT_DEVICE,
     CONF_PLAYBACK_MODE,
     DEFAULT_OFFSET_MINUTES,
     DOMAIN,
-    PLAYBACK_ANDROID_VLC,
-    PLAYBACK_MEDIA_PLAYER,
 )
 from .coordinator import AzanCoordinator
 
@@ -44,6 +43,42 @@ SERVICE_PLAY_SCHEMA = vol.Schema(
         ),
     }
 )
+
+
+def _resolve_output_device(config: dict) -> tuple[str, str]:
+    """Resolve the output device from config, handling legacy formats.
+
+    Returns (device_type, device_id) where:
+    - device_type is "media_player" or "notify"
+    - device_id is the entity_id or notify service name
+    """
+    # New format: "media_player:media_player.living_room" or "notify:mobile_app_saga"
+    output_device = config.get(CONF_OUTPUT_DEVICE, "")
+    if output_device:
+        if ":" in output_device:
+            parts = output_device.split(":", 1)
+            return parts[0], parts[1]
+        # Raw value without prefix - guess from format
+        if output_device.startswith("media_player."):
+            return "media_player", output_device
+        return "notify", output_device
+
+    # Legacy format migration
+    playback_mode = config.get(CONF_PLAYBACK_MODE, "")
+    if playback_mode == "media_player":
+        entity_id = config.get(CONF_MEDIA_PLAYER, "")
+        return "media_player", entity_id
+    elif playback_mode == "android_vlc":
+        service = config.get(CONF_NOTIFY_SERVICE, "")
+        return "notify", service
+
+    # Fallback: check for legacy keys directly
+    if config.get(CONF_MEDIA_PLAYER):
+        return "media_player", config[CONF_MEDIA_PLAYER]
+    if config.get(CONF_NOTIFY_SERVICE):
+        return "notify", config[CONF_NOTIFY_SERVICE]
+
+    return "", ""
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -83,6 +118,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if coordinator.data:
             coordinator.async_set_updated_data(coordinator.data)
 
+        audio_dir = Path(hass.config.path("www", "azan"))
+
         if azan_url:
             try:
                 path = await hass.async_add_executor_job(
@@ -92,6 +129,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 _LOGGER.info("Azan audio ready: %s", path)
             except Exception:
                 _LOGGER.exception("Failed to download azan audio")
+                # Fall back to cached file if it exists on disk
+                cached = audio_dir / "azan.mp3"
+                if cached.exists():
+                    store["audio_file"] = str(cached)
+                    _LOGGER.info("Using cached azan audio: %s", cached)
 
         if fajr_url:
             try:
@@ -102,6 +144,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 _LOGGER.info("Fajr audio ready: %s", path)
             except Exception:
                 _LOGGER.exception("Failed to download fajr audio")
+                # Fall back to cached file if it exists on disk
+                cached = audio_dir / "fajr_azan.mp3"
+                if cached.exists():
+                    store["fajr_audio_file"] = str(cached)
+                    _LOGGER.info("Using cached fajr audio: %s", cached)
 
         store["is_downloading"] = False
         if coordinator.data:
@@ -165,7 +212,7 @@ def _download_audio(hass: HomeAssistant, url: str, name: str) -> str:
     out_path = audio_dir / f"{name}.mp3"
     marker_path = audio_dir / f".{name}.url"
 
-    # Check cache
+    # Check cache -- if same URL and file exists, skip download entirely
     if out_path.exists() and marker_path.exists():
         existing_url = marker_path.read_text().strip()
         if existing_url == url:
@@ -173,6 +220,9 @@ def _download_audio(hass: HomeAssistant, url: str, name: str) -> str:
             return str(out_path)
 
     _LOGGER.info("Downloading audio: %s -> %s", url, name)
+
+    # Download to a temp name so we don't clobber a working cached file
+    tmp_name = f".{name}_tmp"
 
     import yt_dlp
 
@@ -185,7 +235,7 @@ def _download_audio(hass: HomeAssistant, url: str, name: str) -> str:
                 "preferredquality": "0",
             }
         ],
-        "outtmpl": str(audio_dir / f"{name}.%(ext)s"),
+        "outtmpl": str(audio_dir / f"{tmp_name}.%(ext)s"),
         "noplaylist": True,
         "overwrites": True,
         "quiet": True,
@@ -195,15 +245,21 @@ def _download_audio(hass: HomeAssistant, url: str, name: str) -> str:
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
 
-    # yt-dlp may output with different extension before post-processing
-    # The final file should be .mp3 after FFmpegExtractAudio
-    if not out_path.exists():
-        # Check for file without extension change
+    # Find the downloaded temp file and move it to the final path
+    tmp_mp3 = audio_dir / f"{tmp_name}.mp3"
+    if tmp_mp3.exists():
+        shutil.move(str(tmp_mp3), str(out_path))
+    else:
+        # yt-dlp may output with a different extension before post-processing
         for f in audio_dir.iterdir():
-            if f.stem == name and f.suffix != ".url" and not f.name.startswith("."):
-                if f.suffix != ".mp3":
-                    shutil.move(str(f), str(out_path))
+            if f.stem == tmp_name and not f.name.startswith(".."):
+                shutil.move(str(f), str(out_path))
                 break
+
+    # Clean up any leftover temp files
+    for f in audio_dir.iterdir():
+        if f.stem.startswith(f".{name}_tmp"):
+            f.unlink(missing_ok=True)
 
     if not out_path.exists():
         raise FileNotFoundError(f"Audio file not found after download: {out_path}")
@@ -222,18 +278,12 @@ async def _play_azan(hass: HomeAssistant, entry: ConfigEntry, prayer_name: str) 
     if not store:
         return
 
-    coordinator: AzanCoordinator = store["coordinator"]
-
-    # Guard: check if already played (prevents double-triggers from race conditions)
-    if prayer_name != "Test" and coordinator.data:
-        if prayer_name in coordinator.data.played_today:
-            _LOGGER.debug("Prayer %s already played, skipping duplicate", prayer_name)
-            return
-        # Mark as played IMMEDIATELY to prevent race conditions
-        coordinator.data.played_today.add(prayer_name)
-
     config = {**entry.data, **entry.options}
-    playback_mode = config.get(CONF_PLAYBACK_MODE, PLAYBACK_ANDROID_VLC)
+    device_type, device_id = _resolve_output_device(config)
+
+    if not device_type or not device_id:
+        _LOGGER.warning("No output device configured")
+        return
 
     # Pick the right audio file
     audio_file = store.get("audio_file")
@@ -246,15 +296,18 @@ async def _play_azan(hass: HomeAssistant, entry: ConfigEntry, prayer_name: str) 
 
     filename = os.path.basename(audio_file)
 
-    # Build media URL
-    if playback_mode == PLAYBACK_MEDIA_PLAYER:
-        # For media_player, use internal URL is fine
+    # Build the media URL
+    if device_type == "media_player":
+        # For media_player, prefer internal URL
         try:
             base_url = get_url(hass, allow_internal=True, prefer_external=False)
         except Exception:
-            base_url = get_url(hass)
+            try:
+                base_url = get_url(hass, allow_external=True, prefer_external=True)
+            except Exception:
+                base_url = get_url(hass)
     else:
-        # For Android, use configured external URL
+        # For Android notify, use configured external URL
         base_url = config.get(CONF_EXTERNAL_URL, "").rstrip("/")
         if not base_url:
             try:
@@ -264,44 +317,40 @@ async def _play_azan(hass: HomeAssistant, entry: ConfigEntry, prayer_name: str) 
 
     media_url = f"{base_url}/local/azan/{filename}"
 
+    coordinator: AzanCoordinator = store["coordinator"]
+
     # Mark as playing
     store["is_playing"] = True
     store["currently_playing"] = prayer_name
+
+    # Mark prayer as played (unless test)
+    if prayer_name != "Test" and coordinator.data:
+        coordinator.data.played_today.add(prayer_name)
 
     # Trigger sensor updates for status change
     if coordinator.data:
         coordinator.async_set_updated_data(coordinator.data)
 
-    _LOGGER.info("Playing azan for %s: %s (mode: %s)", prayer_name, media_url, playback_mode)
+    _LOGGER.info("Playing azan for %s via %s (%s): %s", prayer_name, device_type, device_id, media_url)
 
     try:
-        if playback_mode == PLAYBACK_MEDIA_PLAYER:
-            # Use media_player.play_media service
-            media_player_entity = config.get(CONF_MEDIA_PLAYER)
-            if not media_player_entity:
-                _LOGGER.warning("No media player configured")
-                return
-
+        if device_type == "media_player":
+            # --- Smart Speaker / Media Player ---
             await hass.services.async_call(
                 "media_player",
                 "play_media",
                 {
-                    "entity_id": media_player_entity,
+                    "entity_id": device_id,
                     "media_content_id": media_url,
                     "media_content_type": "music",
                 },
             )
         else:
-            # Android VLC mode
-            notify_service = config.get(CONF_NOTIFY_SERVICE)
-            if not notify_service:
-                _LOGGER.warning("No notify service configured")
-                return
-
+            # --- Android via notify service ---
             # Wake screen first
             await hass.services.async_call(
                 "notify",
-                notify_service,
+                device_id,
                 {
                     "message": "command_screen_on",
                     "data": {"ttl": 0, "priority": "high"},
@@ -311,7 +360,7 @@ async def _play_azan(hass: HomeAssistant, entry: ConfigEntry, prayer_name: str) 
             # Launch VLC with the audio URL
             await hass.services.async_call(
                 "notify",
-                notify_service,
+                device_id,
                 {
                     "message": "command_activity",
                     "data": {
@@ -325,7 +374,7 @@ async def _play_azan(hass: HomeAssistant, entry: ConfigEntry, prayer_name: str) 
                 },
             )
     except Exception:
-        _LOGGER.exception("Failed to play azan")
+        _LOGGER.exception("Failed to play azan via %s (%s)", device_type, device_id)
         store["is_playing"] = False
         store["currently_playing"] = None
         if coordinator.data:
@@ -365,39 +414,35 @@ async def _stop_playback(hass: HomeAssistant, entry: ConfigEntry) -> None:
     store["currently_playing"] = None
 
     config = {**entry.data, **entry.options}
-    playback_mode = config.get(CONF_PLAYBACK_MODE, PLAYBACK_ANDROID_VLC)
+    device_type, device_id = _resolve_output_device(config)
+
+    if not device_type or not device_id:
+        return
 
     try:
-        if playback_mode == PLAYBACK_MEDIA_PLAYER:
-            # Use media_player.media_stop service
-            media_player_entity = config.get(CONF_MEDIA_PLAYER)
-            if media_player_entity:
-                await hass.services.async_call(
-                    "media_player",
-                    "media_stop",
-                    {"entity_id": media_player_entity},
-                )
-                _LOGGER.info("Stopped azan playback on %s", media_player_entity)
+        if device_type == "media_player":
+            await hass.services.async_call(
+                "media_player",
+                "media_stop",
+                {"entity_id": device_id},
+            )
         else:
-            # Android VLC mode
-            notify_service = config.get(CONF_NOTIFY_SERVICE)
-            if notify_service:
-                await hass.services.async_call(
-                    "notify",
-                    notify_service,
-                    {
-                        "message": "command_media",
-                        "data": {
-                            "media_command": "stop",
-                            "media_package_name": "org.videolan.vlc",
-                            "ttl": 0,
-                            "priority": "high",
-                        },
+            await hass.services.async_call(
+                "notify",
+                device_id,
+                {
+                    "message": "command_media",
+                    "data": {
+                        "media_command": "stop",
+                        "media_package_name": "org.videolan.vlc",
+                        "ttl": 0,
+                        "priority": "high",
                     },
-                )
-                _LOGGER.info("Stopped azan playback via VLC")
+                },
+            )
+        _LOGGER.info("Stopped azan playback via %s (%s)", device_type, device_id)
     except Exception:
-        _LOGGER.exception("Failed to stop playback")
+        _LOGGER.exception("Failed to stop playback via %s (%s)", device_type, device_id)
 
     # Trigger sensor update
     coordinator = store.get("coordinator")
@@ -478,11 +523,6 @@ def _schedule_next_prayer(hass: HomeAssistant, entry: ConfigEntry) -> None:
     def _prayer_callback(_now):
         """Trigger azan playback for the scheduled prayer."""
         prayer_name = next_prayer["name"]
-        # Guard: check if already played (prevents double-triggers)
-        if coordinator.data and prayer_name in coordinator.data.played_today:
-            _LOGGER.debug("Prayer %s already played, skipping", prayer_name)
-            _schedule_next_prayer(hass, entry)
-            return
         _LOGGER.info("Scheduler triggered: %s", prayer_name)
         hass.async_create_task(_play_azan(hass, entry, prayer_name))
 

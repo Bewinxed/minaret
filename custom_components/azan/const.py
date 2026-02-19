@@ -6,18 +6,17 @@ DOMAIN = "azan"
 CONF_AZAN_URL = "azan_url"
 CONF_FAJR_URL = "fajr_azan_url"
 CONF_PRAYER_SOURCE = "prayer_source"
-CONF_NOTIFY_SERVICE = "notify_service"
+CONF_OUTPUT_DEVICE = "output_device"
+CONF_EXTERNAL_URL = "external_url"
 CONF_CITY = "city"
 CONF_COUNTRY = "country"
 CONF_METHOD = "method"
 CONF_OFFSET_MINUTES = "offset_minutes"
-CONF_EXTERNAL_URL = "external_url"
+
+# Legacy config keys (for migration)
 CONF_PLAYBACK_MODE = "playback_mode"
 CONF_MEDIA_PLAYER = "media_player"
-
-# Playback modes
-PLAYBACK_ANDROID_VLC = "android_vlc"
-PLAYBACK_MEDIA_PLAYER = "media_player"
+CONF_NOTIFY_SERVICE = "notify_service"
 
 # Prayer toggle config keys
 CONF_PRAYER_FAJR = "prayer_fajr"
