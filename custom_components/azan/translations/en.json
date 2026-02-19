@@ -27,7 +27,7 @@
           "external_url": "External URL"
         },
         "data_description": {
-          "external_url": "The external URL your phone can reach Home Assistant at (e.g., https://your-ha.duckdns.org)"
+          "external_url": "The external URL your phone can reach Home Assistant at (e.g., your-ha.duckdns.org)"
         }
       },
       "prayer_source": {
@@ -91,7 +91,7 @@
           "external_url": "External URL"
         },
         "data_description": {
-          "external_url": "The external URL your phone can reach Home Assistant at (e.g., https://your-ha.duckdns.org)"
+          "external_url": "The external URL your phone can reach Home Assistant at (e.g., your-ha.duckdns.org)"
         }
       },
       "prayer_source": {
