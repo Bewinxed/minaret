@@ -10,6 +10,7 @@ import aiohttp
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_CITY,
@@ -101,7 +102,7 @@ class AzanCoordinator(DataUpdateCoordinator[PrayerData]):
         except Exception as err:
             raise UpdateFailed(f"Failed to fetch prayer times: {err}") from err
 
-        today = datetime.now().strftime("%Y-%m-%d")
+        today = dt_util.now().strftime("%Y-%m-%d")
         is_ramadan = (hijri_month == 9) if hijri_month else False
         prayers = self._normalize_times(raw, is_ramadan)
 
@@ -200,7 +201,7 @@ class AzanCoordinator(DataUpdateCoordinator[PrayerData]):
 
     def _normalize_times(self, raw: dict[str, str], is_ramadan: bool = False) -> list[dict]:
         """Convert raw time strings to structured prayer info dicts."""
-        now = datetime.now()
+        now = dt_util.now()
         config = self.config
 
         # Build enabled map from prayer toggle config keys
