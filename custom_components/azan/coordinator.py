@@ -118,10 +118,14 @@ class AzanCoordinator(DataUpdateCoordinator[PrayerData]):
             data.played_today = self.data.played_today
 
         self._last_date = today
-        _LOGGER.info("Prayer times refreshed for %s", today)
+        _LOGGER.info(
+            "Prayer times refreshed for %s (tz=%s)",
+            today, dt_util.get_default_time_zone(),
+        )
         for p in prayers:
-            _LOGGER.debug(
-                "  %s: %s (enabled=%s)", p["name"], p["time_str"], p["enabled"]
+            _LOGGER.info(
+                "  %s: %s (%s) enabled=%s",
+                p["name"], p["time_str"], p["time"].isoformat(), p["enabled"],
             )
 
         return data
@@ -202,6 +206,9 @@ class AzanCoordinator(DataUpdateCoordinator[PrayerData]):
     def _normalize_times(self, raw: dict[str, str], is_ramadan: bool = False) -> list[dict]:
         """Convert raw time strings to structured prayer info dicts."""
         now = dt_util.now()
+        ha_tz = dt_util.get_default_time_zone()
+        # Build today's date in HA's timezone for constructing prayer times
+        today_local = now.astimezone(ha_tz).date()
         config = self.config
 
         # Build enabled map from prayer toggle config keys
@@ -241,8 +248,11 @@ class AzanCoordinator(DataUpdateCoordinator[PrayerData]):
             if name in ("Asr", "Maghrib", "Isha") and hour < 10:
                 hour += 12
 
-            prayer_time = now.replace(
-                hour=hour, minute=minute, second=0, microsecond=0
+            # Construct prayer time explicitly in HA's timezone
+            # Prayer times from the API are always in local time
+            prayer_time = datetime(
+                today_local.year, today_local.month, today_local.day,
+                hour, minute, 0, tzinfo=ha_tz,
             )
 
             if name == "Fajr":
