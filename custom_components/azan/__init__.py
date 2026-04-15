@@ -178,6 +178,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Schedule azan playback
     _schedule_next_prayer(hass, entry)
 
+    # Re-schedule whenever the coordinator refreshes (e.g. new day's data)
+    @callback
+    def _on_coordinator_update() -> None:
+        _LOGGER.debug("Coordinator updated, re-scheduling next prayer")
+        _schedule_next_prayer(hass, entry)
+
+    entry.async_on_unload(coordinator.async_add_listener(_on_coordinator_update))
+
     # Register services
     _register_services(hass, entry)
 
@@ -514,13 +522,18 @@ def _schedule_next_prayer(hass: HomeAssistant, entry: ConfigEntry) -> None:
         tomorrow = (now + timedelta(days=1)).replace(
             hour=0, minute=1, second=0, microsecond=0
         )
-        _LOGGER.debug("No more prayers today, scheduling midnight refresh")
+        _LOGGER.debug("No more prayers today, scheduling midnight refresh at %s", tomorrow)
 
         @callback
         def _midnight_refresh(_now):
-            """Refresh prayer times at midnight."""
+            """Refresh prayer times at midnight.
+
+            The coordinator listener (_on_coordinator_update) will
+            re-trigger _schedule_next_prayer once the refresh completes
+            with fresh data, so we don't call it here.
+            """
+            _LOGGER.info("Midnight refresh triggered, fetching new prayer times")
             hass.async_create_task(coordinator.async_refresh())
-            _schedule_next_prayer(hass, entry)
 
         store["unsub_timer"] = async_track_point_in_time(
             hass, _midnight_refresh, tomorrow
